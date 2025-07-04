@@ -397,9 +397,17 @@
         // --- GLOBAL AND FIREBASE VARIABLES ---
         const getEl = (id) => document.getElementById(id);
         
+        // FIX: Reverted to using the environment-provided Firebase config to prevent auth mismatch.
         const firebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config
             ? JSON.parse(__firebase_config)
-            : {};
+            : {
+                apiKey: "AIzaSyBUIORdhVUINg68mXUbtRlLFWgtfRaxXcs",
+                authDomain: "aplikasi-konten-ai-final.firebaseapp.com",
+                projectId: "aplikasi-konten-ai-final",
+                storageBucket: "aplikasi-konten-ai-final.firebasestorage.app",
+                messagingSenderId: "989992152255",
+                appId: "1:989992152255:web:b94009b4771d7c95be6a0a"
+            };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         
@@ -1342,7 +1350,6 @@ PRODID:-//gemini-planner//NONSGML v1.0//EN
 BEGIN:VEVENT
 UID:${crypto.randomUUID()}@gemini.planner
 DTSTAMP:${formatToUTC(new Date())}
-DTSTART:${formatToUTC(startDate)}
 DTEND:${formatToUTC(endDate)}
 SUMMARY:Konten: ${item.platform} - ${item.idea}
 DESCRIPTION:Rencana Konten:\\n\\nIde: ${item.idea}\\nPlatform: ${item.platform}\\nPilar: ${item.pillar}\\n\\nBrief Caption:\\n${item.caption_brief}\\n\\nSaran Visual:\\n${item.visual_idea}\\n\\nHashtags:\\n${item.hashtags}
@@ -1361,12 +1368,12 @@ END:VCALENDAR`;
             calendarModal.classList.add('hidden');
         };
 
-        closeCalendarModalBtn.addEventListener('click', () => calendarModal.classList.add('hidden'));
-        googleCalendarBtn.addEventListener('click', generateGoogleCalendarLink);
-        icsDownloadBtn.addEventListener('click', generateIcsFile);
+        if(closeCalendarModalBtn) closeCalendarModalBtn.addEventListener('click', () => calendarModal.classList.add('hidden'));
+        if(googleCalendarBtn) googleCalendarBtn.addEventListener('click', generateGoogleCalendarLink);
+        if(icsDownloadBtn) icsDownloadBtn.addEventListener('click', generateIcsFile);
         
         // --- NEW FEATURES ---
-        productFocusToggle.addEventListener('change', () => {
+        if(productFocusToggle) productFocusToggle.addEventListener('change', () => {
             const isChecked = productFocusToggle.checked;
             productFocusFields.classList.toggle('hidden', !isChecked);
             planDetailsContainer.classList.toggle('hidden', isChecked);
@@ -1378,10 +1385,14 @@ END:VCALENDAR`;
             const year = today.getFullYear();
             const month = String(today.getMonth() + 1).padStart(2, '0');
             const day = String(today.getDate()).padStart(2, '0');
-            if(!startDateInput.value){ startDateInput.value = `${year}-${month}-${day}`; }
-            startDateInput.min = `${year}-${month}-${day}`;
-            getEl('promotion-start-date').value = '';
-            getEl('promotion-end-date').value = '';
+            if(startDateInput && !startDateInput.value){ startDateInput.value = `${year}-${month}-${day}`; }
+            if(startDateInput) startDateInput.min = `${year}-${month}-${day}`;
+            
+            const promoStartDate = getEl('promotion-start-date');
+            if(promoStartDate) promoStartDate.value = '';
+
+            const promoEndDate = getEl('promotion-end-date');
+            if(promoEndDate) promoEndDate.value = '';
         };
 
         // --- FINAL SETUP AND INITIALIZATION ---
