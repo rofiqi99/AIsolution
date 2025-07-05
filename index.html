@@ -397,14 +397,9 @@
         // --- GLOBAL AND FIREBASE VARIABLES ---
         const getEl = (id) => document.getElementById(id);
         
-        const firebaseConfig = {
-            apiKey: "AIzaSyBUIORdhVUINg68mXUbtRlLFWgtfRaxXcs",
-            authDomain: "aplikasi-konten-ai-final.firebaseapp.com",
-            projectId: "aplikasi-konten-ai-final",
-            storageBucket: "aplikasi-konten-ai-final.appspot.com",
-            messagingSenderId: "989992152255",
-            appId: "1:989992152255:web:b94009b4771d7c95be6a0a"
-        };
+        const firebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config
+            ? JSON.parse(__firebase_config)
+            : {};
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         
@@ -884,7 +879,7 @@
         const singleIdeaSchema = { type: "OBJECT", properties: { day: { type: "STRING" }, platform: { type: "STRING" }, pillar: { type: "STRING" }, idea: { type: "STRING" }, caption_brief: { type: "STRING" }, visual_idea: { type: "STRING" }, hashtags: { type: "STRING" } }, required: ["day", "platform", "pillar", "idea", "caption_brief", "visual_idea", "hashtags"] };
 
         const callGemini = async (prompt, isJson = false, schema = null) => {
-            const apiKey = ""; // API Key is handled by the environment
+            const apiKey = firebaseConfig.apiKey; 
             let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
             const payload = { contents: chatHistory };
 
@@ -1349,7 +1344,7 @@ UID:${crypto.randomUUID()}@gemini.planner
 DTSTAMP:${formatToUTC(new Date())}
 DTEND:${formatToUTC(endDate)}
 SUMMARY:Konten: ${item.platform} - ${item.idea}
-DESCRIPTION:Rencana Konten:\\n\\nIde: ${item.idea}\\nPlatform: ${item.platform}\\nPilar: ${item.pillar}\\n\nBrief Caption:\n${item.caption_brief}\n\nSaran Visual:\n${item.visual_idea}\n\nHashtags:\n${item.hashtags}
+DESCRIPTION:Rencana Konten:\\n\\nIde: ${item.idea}\\nPlatform: ${item.platform}\\nPilar: ${item.pillar}\n\nBrief Caption:\n${item.caption_brief}\n\nSaran Visual:\n${item.visual_idea}\n\nHashtags:\n${item.hashtags}
 LOCATION:${item.platform}
 END:VEVENT
 END:VCALENDAR`;
