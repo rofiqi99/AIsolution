@@ -390,16 +390,21 @@
 
     <script type="module">
         // Firebase Imports
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
         // --- GLOBAL AND FIREBASE VARIABLES ---
         const getEl = (id) => document.getElementById(id);
         
-        const firebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config
-            ? JSON.parse(__firebase_config)
-            : {};
+        const firebaseConfig = {
+            apiKey: "AIzaSyBUIORdhVUINg68mXUbtRlLFWgtfRaxXcs",
+            authDomain: "aplikasi-konten-ai-final.firebaseapp.com",
+            projectId: "aplikasi-konten-ai-final",
+            storageBucket: "aplikasi-konten-ai-final.appspot.com",
+            messagingSenderId: "989992152255",
+            appId: "1:989992152255:web:b94009b4771d7c95be6a0a"
+        };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         
@@ -1344,7 +1349,7 @@ UID:${crypto.randomUUID()}@gemini.planner
 DTSTAMP:${formatToUTC(new Date())}
 DTEND:${formatToUTC(endDate)}
 SUMMARY:Konten: ${item.platform} - ${item.idea}
-DESCRIPTION:Rencana Konten:\\n\\nIde: ${item.idea}\\nPlatform: ${item.platform}\\nPilar: ${item.pillar}\\n\\nBrief Caption:\\n${item.caption_brief}\\n\\nSaran Visual:\\n${item.visual_idea}\\n\\nHashtags:\\n${item.hashtags}
+DESCRIPTION:Rencana Konten:\\n\\nIde: ${item.idea}\\nPlatform: ${item.platform}\\nPilar: ${item.pillar}\\n\nBrief Caption:\n${item.caption_brief}\n\nSaran Visual:\n${item.visual_idea}\n\nHashtags:\n${item.hashtags}
 LOCATION:${item.platform}
 END:VEVENT
 END:VCALENDAR`;
