@@ -391,30 +391,65 @@
     <script type="module">
         // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
         // --- GLOBAL AND FIREBASE VARIABLES ---
         const getEl = (id) => document.getElementById(id);
         
-        const firebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config
-            ? JSON.parse(__firebase_config)
-            : {};
+        // --- PERUBAHAN 1: KONFIGURASI UNTUK FIREBASE & DAFTAR API KEY ---
+        // Ganti dengan konfigurasi Firebase Anda.
+        // Kunci API di sini akan digunakan untuk layanan Firebase seperti Autentikasi.
+        const firebaseConfig = {
+  apiKey: "AIzaSyBUIORdhVUINg68mXUbtRlLFWgtfRaxXcs",
+  authDomain: "aplikasi-konten-ai-final.firebaseapp.com",
+  projectId: "aplikasi-konten-ai-final",
+  storageBucket: "aplikasi-konten-ai-final.firebasestorage.app",
+  messagingSenderId: "989992152255",
+  appId: "1:989992152255:web:b94009b4771d7c95be6a0a"
+};
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // Masukkan semua Kunci API Anda di sini untuk rotasi.
+        // Kunci-kunci ini akan digunakan khusus untuk memanggil Gemini API.
+        const geminiApiKeys = [
+            "AIzaSyBo41ECQpP7KDK8bM323d6kLq5q9NG96KE",
+            "AIzaSyCi9MjLH2vUD0hPBj7aX154e5G-sp7bJeY",
+            "AIzaSyCZBmDbU9AsyDFRJFdQnVoLKDkLI2L9WiE",
+            // Anda bisa menambahkan lebih banyak kunci di sini
+        ];
+
+        const appId = 'my-content-planner-app';
         
         let app, db, auth;
         let userId = null;
         let docRef = null;
-        let localData = {}; // Object to hold local form data
+        let localData = {};
 
-        let currentStep = 1;
-        const totalSteps = 3;
-        let generatedData = [];
-        let currentInputs = {};
-        let currentCalendarItem = null;
-        let currentDraftObject = null;
-        
+        // --- Inisialisasi Firebase ---
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            console.log("Firebase berhasil diinisialisasi.");
+            getEl('auth-container').style.display = 'flex';
+        } catch (error) {
+            console.error("Inisialisasi Firebase gagal:", error);
+            showErrorModal("Gagal menginisialisasi layanan. Fitur sinkronisasi tidak akan berfungsi.");
+            getEl('auth-container').style.display = 'none';
+        }
+
+        // Fungsi ini diubah untuk langsung login sebagai anonim
+        const attemptSignIn = async () => {
+             if (!auth) return;
+             try {
+                console.log("Login sebagai anonim secara default.");
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Gagal login sebagai anonim:", error);
+                showErrorModal(`Gagal melakukan otentikasi anonim: ${error.message}`);
+            }
+        }
+
         // --- DEBOUNCE FUNCTION ---
         const debounce = (func, delay) => {
             let timeout;
@@ -443,78 +478,39 @@
         
         const debouncedSave = debounce(saveData, 1500);
 
-        // --- FIREBASE INITIALIZATION & AUTH ---
-        const initFirebase = async () => {
-            try {
-                if (Object.keys(firebaseConfig).length > 0) {
-                    app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-                    
-                    onAuthStateChanged(auth, async (user) => {
-                        const userProfileEl = getEl('user-profile');
-                        const googleLoginBtnEl = getEl('google-login-btn');
-                        
-                        if (user) {
-                            userId = user.uid;
+        onAuthStateChanged(auth, async (user) => {
+            const userProfileEl = getEl('user-profile');
+            const googleLoginBtnEl = getEl('google-login-btn');
+            
+            if (user) {
+                userId = user.uid;
 
-                            if (user.isAnonymous) {
-                                console.log("Signed in anonymously with UID:", userId);
-                                userProfileEl.classList.add('hidden');
-                                userProfileEl.classList.remove('flex');
-                                googleLoginBtnEl.classList.remove('hidden');
-                                docRef = null;
-                                loadFromLocalStorage();
-                            } else {
-                                console.log("Signed in as Google user:", user.displayName);
-                                docRef = doc(db, `artifacts/${appId}/users/${userId}/contentPlanner`, "formData");
-                                getEl('user-profile-name').textContent = user.displayName || "Pengguna";
-                                getEl('user-profile-img').src = user.photoURL;
-                                userProfileEl.classList.remove('hidden');
-                                userProfileEl.classList.add('flex');
-                                googleLoginBtnEl.classList.add('hidden');
-                                await loadFromFirestore();
-                            }
-                        } else {
-                            userId = null;
-                            userProfileEl.classList.add('hidden');
-                            userProfileEl.classList.remove('flex');
-                            googleLoginBtnEl.classList.remove('hidden');
-                            await attemptSignIn();
-                        }
-                    });
-                    
-                    await attemptSignIn();
-                } else {
-                    console.log("Firebase config not provided. Running in local-only mode.");
-                    getEl('auth-container').style.display = 'none';
+                if (user.isAnonymous) {
+                    console.log("Signed in anonymously with UID:", userId);
+                    userProfileEl.classList.add('hidden');
+                    userProfileEl.classList.remove('flex');
+                    googleLoginBtnEl.classList.remove('hidden');
+                    docRef = null;
                     loadFromLocalStorage();
-                }
-
-            } catch (error) {
-                console.error("Firebase initialization failed:", error);
-                showErrorModal("Gagal menghubungkan ke layanan. Beberapa fitur mungkin tidak berfungsi.");
-                getEl('auth-container').style.display = 'none';
-                loadFromLocalStorage();
-            }
-        };
-
-        const attemptSignIn = async () => {
-             if (!auth) return;
-             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    console.log("Attempting sign-in with custom token.");
-                    await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
-                    console.log("No custom token found, signing in anonymously.");
-                    await signInAnonymously(auth);
+                    console.log("Signed in as Google user:", user.displayName);
+                    docRef = doc(db, `artifacts/${appId}/users/${userId}/contentPlanner`, "formData");
+                    getEl('user-profile-name').textContent = user.displayName || "Pengguna";
+                    getEl('user-profile-img').src = user.photoURL;
+                    userProfileEl.classList.remove('hidden');
+                    userProfileEl.classList.add('flex');
+                    googleLoginBtnEl.classList.add('hidden');
+                    await loadFromFirestore();
                 }
-            } catch (error) {
-                console.error("Authentication failed:", error);
-                showErrorModal(`Gagal melakukan otentikasi: ${error.message}`);
+            } else {
+                userId = null;
+                userProfileEl.classList.add('hidden');
+                userProfileEl.classList.remove('flex');
+                googleLoginBtnEl.classList.remove('hidden');
+                await attemptSignIn();
             }
-        }
-
+        });
+        
         getEl('google-login-btn').addEventListener('click', async () => {
             if (!auth) return;
             try {
@@ -878,8 +874,11 @@
         const plannerSchema = { type: "OBJECT", properties: { plan: { type: "ARRAY", items: { type: "OBJECT", properties: { day: { type: "STRING" }, platform: { type: "STRING" }, pillar: { type: "STRING" }, idea: { type: "STRING" }, caption_brief: { type: "STRING" }, visual_idea: { type: "STRING" }, hashtags: { type: "STRING" } }, required: ["day", "platform", "pillar", "idea", "caption_brief", "visual_idea", "hashtags"] } } } };
         const singleIdeaSchema = { type: "OBJECT", properties: { day: { type: "STRING" }, platform: { type: "STRING" }, pillar: { type: "STRING" }, idea: { type: "STRING" }, caption_brief: { type: "STRING" }, visual_idea: { type: "STRING" }, hashtags: { type: "STRING" } }, required: ["day", "platform", "pillar", "idea", "caption_brief", "visual_idea", "hashtags"] };
 
+        // --- PERUBAHAN 2: FUNGSI callGemini DIMODIFIKASI UNTUK ROTASI KUNCI ---
         const callGemini = async (prompt, isJson = false, schema = null) => {
-            const apiKey = firebaseConfig.apiKey; 
+            // Memilih satu kunci API secara acak dari daftar geminiApiKeys
+            const apiKey = geminiApiKeys[Math.floor(Math.random() * geminiApiKeys.length)];
+            
             let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
             const payload = { contents: chatHistory };
 
@@ -890,6 +889,7 @@
                 };
             }
 
+            // URL API akan menggunakan kunci yang dipilih secara acak
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
             
             const response = await fetch(apiUrl, {
@@ -983,7 +983,7 @@
             INSTRUKSI UTAMA: Rencana harus disesuaikan untuk mencapai tujuan **${inputs['business-stage']}**.
             INSTRUKSI PLATFORM: ${platformInstruction}
             INSTRUKSI TUJUAN KONTEN: ${stageInstruction}
-            INSTRUKSI TANGGAL: ${startDateInstruction} Gunakan tanggal kalender aktual (misalnya, '25 Juni 2025') untuk field 'day' dalam JSON, bukan 'Hari 1'.
+            INSTRUKSI TANGGAL: ${startDateInstruction} Gunakan tanggal kalender aktual (misalnya, '7 Juli 2025') untuk field 'day' dalam JSON, bukan 'Hari 1'.
             INSTRUKSI FOKUS: ${focusInstruction}
             INSTRUKSI SUASANA: ${moodInstruction}
             Hasilkan dalam format JSON sesuai skema.`;
@@ -1035,7 +1035,7 @@
                     </div>
                 `;
                 card.querySelector('.get-ai-result-btn').addEventListener('click', () => handleDevelopCaption(item, draft));
-                card.querySelector('.add-to-calendar-btn').addEventListener('click', () => showCalendarModal(item));
+                card.querySelector('.add-to-calendar-btn').addEventListener('click', () => showCalendarModal(item, index));
                 card.querySelector('.regenerate-idea-btn').addEventListener('click', (e) => handleRegenerateIdea(index, e.currentTarget.closest('.bg-white'), container, draft));
                 container.appendChild(card);
             });
@@ -1303,24 +1303,63 @@ Balas HANYA dengan objek JSON yang valid sesuai skema yang diberikan.`;
         const closeCalendarModalBtn = getEl('close-calendar-modal');
         const googleCalendarBtn = getEl('google-calendar-btn');
         const icsDownloadBtn = getEl('ics-download-btn');
-        const monthMap = { "januari": 0, "februari": 1, "maret": 2, "april": 3, "mei": 4, "juni": 5, "juli": 6, "agustus": 7, "september": 8, "oktober": 9, "november": 10, "desember": 11 };
-        const parseDateString = (dateStr) => {
-            if (!dateStr || dateStr.toLowerCase().startsWith('ide')) return null;
+        
+        const parseDateString = (dateStr, itemIndex = 0) => {
+            if (!dateStr) return null;
+
+            // Handle relative days like "Ide 1", "Hari ke-1", etc.
+            const relativeDayMatch = dateStr.match(/(?:Ide|Hari ke-|Day)\s*(\d+)/i);
+            if (relativeDayMatch) {
+                const dayOffset = parseInt(relativeDayMatch[1], 10) - 1;
+                const planStartDateValue = currentInputs['start-date'];
+                if (planStartDateValue) {
+                    const planStartDate = new Date(planStartDateValue + 'T00:00:00'); // Use local timezone to avoid off-by-one
+                    planStartDate.setDate(planStartDate.getDate() + dayOffset);
+                    planStartDate.setHours(9, 0, 0, 0); // Set to 9 AM local time
+                    return planStartDate;
+                }
+                // Fallback if no start date is set (e.g. in drafts)
+                const today = new Date();
+                today.setDate(today.getDate() + itemIndex);
+                today.setHours(9, 0, 0, 0);
+                return today;
+            }
+
+            // Handle absolute dates like "5 Juli 2025"
+            const monthMap = { "januari": 0, "februari": 1, "maret": 2, "april": 3, "mei": 4, "juni": 5, "juli": 6, "agustus": 7, "september": 8, "oktober": 9, "november": 10, "desember": 11 };
             const parts = dateStr.split(" ");
-            if (parts.length !== 3) return null;
-            const day = parseInt(parts[0], 10);
-            const month = monthMap[parts[1].toLowerCase()];
-            const year = parseInt(parts[2], 10);
-            if (isNaN(day) || month === undefined || isNaN(year)) return null;
-            return new Date(year, month, day, 9, 0, 0);
+            if (parts.length === 3) {
+                const day = parseInt(parts[0], 10);
+                const month = monthMap[parts[1].toLowerCase()];
+                const year = parseInt(parts[2], 10);
+                if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+                    return new Date(year, month, day, 9, 0, 0);
+                }
+            }
+
+            // Fallback for other date formats (e.g., YYYY-MM-DD from a date picker)
+            const parsedDate = new Date(dateStr);
+            if (!isNaN(parsedDate.getTime())) {
+                parsedDate.setHours(9,0,0,0);
+                return parsedDate;
+            }
+
+            console.warn("Could not parse date string:", dateStr);
+            return null; // Return null if all parsing fails
         };
+
         const formatToUTC = (date) => date ? date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '') : '';
-        const showCalendarModal = (item) => { currentCalendarItem = item; calendarModal.classList.remove('hidden'); };
+        
+        const showCalendarModal = (item, index) => { 
+            currentCalendarItem = { ...item, index }; // Store item and its index
+            calendarModal.classList.remove('hidden'); 
+        };
+
         const generateGoogleCalendarLink = () => {
              if (!currentCalendarItem) return;
              const item = currentCalendarItem;
-             const startDate = parseDateString(item.day);
-             if (!startDate) { showErrorModal("Tanggal tidak valid."); return; }
+             const startDate = parseDateString(item.day, item.index);
+             if (!startDate) { showErrorModal("Tanggal untuk ide ini tidak valid dan tidak bisa dijadwalkan."); return; }
              const endDate = new Date(startDate.getTime() + 3600000); // 1 hour
              const title = encodeURIComponent(`Konten: ${item.platform} - ${item.idea}`);
              const details = encodeURIComponent(`Rencana Konten:\n\nIde: ${item.idea}\nPlatform: ${item.platform}\nPilar: ${item.pillar}\n\nBrief Caption:\n${item.caption_brief}\n\nSaran Visual:\n${item.visual_idea}\n\nHashtags:\n${item.hashtags}`);
@@ -1332,8 +1371,8 @@ Balas HANYA dengan objek JSON yang valid sesuai skema yang diberikan.`;
         const generateIcsFile = () => {
             if (!currentCalendarItem) return;
             const item = currentCalendarItem;
-            const startDate = parseDateString(item.day);
-            if (!startDate) { showErrorModal("Tanggal tidak valid."); return; }
+            const startDate = parseDateString(item.day, item.index);
+            if (!startDate) { showErrorModal("Tanggal untuk ide ini tidak valid dan tidak bisa dijadwalkan."); return; }
             const endDate = new Date(startDate.getTime() + 3600000);
             
             const icsContent = `BEGIN:VCALENDAR
@@ -1342,9 +1381,10 @@ PRODID:-//gemini-planner//NONSGML v1.0//EN
 BEGIN:VEVENT
 UID:${crypto.randomUUID()}@gemini.planner
 DTSTAMP:${formatToUTC(new Date())}
+DTSTART:${formatToUTC(startDate)}
 DTEND:${formatToUTC(endDate)}
 SUMMARY:Konten: ${item.platform} - ${item.idea}
-DESCRIPTION:Rencana Konten:\\n\\nIde: ${item.idea}\\nPlatform: ${item.platform}\\nPilar: ${item.pillar}\n\nBrief Caption:\n${item.caption_brief}\n\nSaran Visual:\n${item.visual_idea}\n\nHashtags:\n${item.hashtags}
+DESCRIPTION:Rencana Konten:\\n\\nIde: ${item.idea}\\nPlatform: ${item.platform}\\nPilar: ${item.pillar}\\n\\nBrief Caption:\\n${item.caption_brief}\\n\\nSaran Visual:\\n${item.visual_idea}\\n\\nHashtags:\\n${item.hashtags}
 LOCATION:${item.platform}
 END:VEVENT
 END:VCALENDAR`;
@@ -1377,14 +1417,26 @@ END:VCALENDAR`;
             const year = today.getFullYear();
             const month = String(today.getMonth() + 1).padStart(2, '0');
             const day = String(today.getDate()).padStart(2, '0');
-            if(startDateInput && !startDateInput.value){ startDateInput.value = `${year}-${month}-${day}`; }
-            if(startDateInput) startDateInput.min = `${year}-${month}-${day}`;
-            
+            const todayString = `${year}-${month}-${day}`;
+
+            if (startDateInput) {
+                if (!startDateInput.value) {
+                    startDateInput.value = todayString;
+                }
+                startDateInput.min = todayString;
+            }
+
             const promoStartDate = getEl('promotion-start-date');
-            if(promoStartDate) promoStartDate.value = '';
+            if (promoStartDate) {
+                promoStartDate.min = todayString;
+                 if (!promoStartDate.value) promoStartDate.value = '';
+            }
 
             const promoEndDate = getEl('promotion-end-date');
-            if(promoEndDate) promoEndDate.value = '';
+            if (promoEndDate) {
+                promoEndDate.min = todayString;
+                if (!promoEndDate.value) promoEndDate.value = '';
+            }
         };
 
         // --- FINAL SETUP AND INITIALIZATION ---
@@ -1393,7 +1445,7 @@ END:VCALENDAR`;
                 el.addEventListener('keyup', debouncedSave);
                 el.addEventListener('change', debouncedSave);
             });
-            initFirebase();
+            attemptSignIn();
             showStep(1);
         });
 
