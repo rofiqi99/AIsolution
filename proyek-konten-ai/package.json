@@ -1,0 +1,12 @@
+{
+  "name": "ai-content-planner-vercel",
+  "version": "1.0.0",
+  "description": "AI Content Planner with a secure backend on Vercel.",
+  "main": "index.html",
+  "scripts": {
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.14.1"
+  }
+}
