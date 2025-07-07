@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "AI Content Planner with a secure backend on Vercel.",
   "main": "index.html",
+  "type": "module",
   "scripts": {
     "start": "vercel dev"
   },
@@ -10,3 +11,4 @@
     "@google/generative-ai": "^0.14.1"
   }
 }
+
