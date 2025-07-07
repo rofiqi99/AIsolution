@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Demo Sederhana</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen">
+
+    <div class="w-full max-w-2xl mx-auto p-8 bg-white rounded-2xl shadow-lg">
+        
+        <!-- Header dan Kontrol Login -->
+        <div class="flex justify-between items-center mb-6 pb-6 border-b">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900">Aplikasi Uji Coba Vercel</h1>
+                <p class="text-slate-500">Login dengan Google & buat rencana dari prompt.</p>
+            </div>
+            <div id="auth-container">
+                <button id="google-login-btn" class="bg-blue-500 text-white font-semibold py-2 px-5 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-3">
+                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.222,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C42.021,35.596,44,30.138,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                    Login dengan Google
+                </button>
+                <div id="user-profile" class="hidden items-center gap-3">
+                    <img id="user-profile-img" class="w-10 h-10 rounded-full" alt="Foto profil">
+                    <p id="user-profile-name" class="font-semibold text-slate-800"></p>
+                    <button id="logout-btn" class="text-slate-500 hover:text-red-600 transition-colors ml-2" title="Logout">&rarr;</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form untuk Prompt -->
+        <div class="space-y-4">
+            <div>
+                <label for="prompt-input" class="block text-sm font-medium text-slate-700 mb-1">Masukkan Prompt Anda:</label>
+                <textarea id="prompt-input" rows="4" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Contoh: Buatkan 3 ide konten untuk kedai kopi di Instagram..."></textarea>
+            </div>
+            <button id="generate-btn" class="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2">
+                Buat Rencana!
+            </button>
+        </div>
+
+        <!-- Area Hasil -->
+        <div id="result-container" class="mt-8 pt-6 border-t">
+            <h2 class="text-2xl font-bold mb-4">Hasil:</h2>
+            <div id="loading" class="hidden text-center">
+                <p class="text-slate-600">Memproses...</p>
+            </div>
+            <div id="result-output" class="p-4 bg-slate-50 rounded-lg whitespace-pre-wrap">
+                Hasil dari AI akan muncul di sini.
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        // ===================================================================================
+        // LANGKAH 1: ISI SEMUA INFORMASI DI BAGIAN INI
+        // ===================================================================================
+
+        // Salin-tempel konfigurasi Firebase Anda di sini
+        const firebaseConfig = {
+          apiKey: "GANTI_DENGAN_API_KEY_FIREBASE_ANDA",
+          authDomain: "GANTI_DENGAN_AUTH_DOMAIN_ANDA",
+          projectId: "GANTI_DENGAN_PROJECT_ID_ANDA",
+          storageBucket: "GANTI_DENGAN_STORAGE_BUCKET_ANDA",
+          messagingSenderId: "GANTI_DENGAN_MESSAGING_SENDER_ID_ANDA",
+          appId: "GANTI_DENGAN_APP_ID_ANDA"
+        };
+
+        // Salin-tempel Kunci API Gemini Anda di sini
+        const geminiApiKey = "GANTI_DENGAN_API_KEY_GEMINI_ANDA";
+
+        // ===================================================================================
+        // ANDA TIDAK PERLU MENGUBAH KODE DI BAWAH INI
+        // ===================================================================================
+
+        // Import fungsi yang diperlukan dari Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+        // --- Inisialisasi Firebase ---
+        let auth;
+        try {
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            console.log("Firebase berhasil diinisialisasi.");
+        } catch (error) {
+            console.error("Inisialisasi Firebase gagal:", error);
+            document.getElementById('result-output').textContent = "Gagal menginisialisasi Firebase. Periksa konfigurasi Anda di kode.";
+        }
+
+        // --- Variabel Elemen DOM ---
+        const googleLoginBtn = document.getElementById('google-login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const authContainer = document.getElementById('auth-container');
+        const userProfile = document.getElementById('user-profile');
+        const userProfileImg = document.getElementById('user-profile-img');
+        const userProfileName = document.getElementById('user-profile-name');
+        const generateBtn = document.getElementById('generate-btn');
+        const promptInput = document.getElementById('prompt-input');
+        const resultOutput = document.getElementById('result-output');
+        const loadingIndicator = document.getElementById('loading');
+
+        // --- Logika Autentikasi ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // Pengguna sedang login
+                authContainer.classList.add('logged-in');
+                userProfile.classList.remove('hidden');
+                userProfile.classList.add('flex');
+                googleLoginBtn.classList.add('hidden');
+
+                userProfileImg.src = user.photoURL;
+                userProfileName.textContent = user.displayName;
+            } else {
+                // Pengguna sudah logout
+                authContainer.classList.remove('logged-in');
+                userProfile.classList.add('hidden');
+                userProfile.classList.remove('flex');
+                googleLoginBtn.classList.remove('hidden');
+            }
+        });
+
+        googleLoginBtn.addEventListener('click', async () => {
+            const provider = new GoogleAuthProvider();
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error("Login Google gagal:", error);
+                resultOutput.textContent = `Login Google gagal: ${error.message}`;
+            }
+        });
+
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+            } catch (error) {
+                console.error("Logout gagal:", error);
+            }
+        });
+
+        // --- Logika Panggilan API Gemini ---
+        generateBtn.addEventListener('click', async () => {
+            const prompt = promptInput.value;
+            if (!prompt) {
+                resultOutput.textContent = "Prompt tidak boleh kosong.";
+                return;
+            }
+
+            loadingIndicator.classList.remove('hidden');
+            resultOutput.textContent = "";
+            generateBtn.disabled = true;
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: [{ text: prompt }]
+                }]
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error("API Error:", errorData);
+                    throw new Error(errorData.error.message || `Error ${response.status}`);
+                }
+
+                const result = await response.json();
+                const text = result.candidates[0].content.parts[0].text;
+                resultOutput.textContent = text;
+
+            } catch (error) {
+                console.error("Gagal memanggil Gemini API:", error);
+                resultOutput.textContent = `Terjadi kesalahan: ${error.message}`;
+            } finally {
+                loadingIndicator.classList.add('hidden');
+                generateBtn.disabled = false;
+            }
+        });
+
+    </script>
+</body>
+</html>
