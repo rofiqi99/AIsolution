@@ -1,0 +1,14 @@
+// File: package.json
+{
+  "name": "ai-content-planner-vercel-secure",
+  "version": "1.0.0",
+  "description": "Secure AI Content Planner for Vercel",
+  "main": "index.html",
+  "type": "module",
+  "scripts": {
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.14.1"
+  }
+}
