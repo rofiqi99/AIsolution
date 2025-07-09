@@ -2,6 +2,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export default async function handler(req, res) {
+    // Pesan console ini diubah untuk memaksa Vercel melakukan build ulang
+    console.log("Mencoba menjalankan fungsi generate versi baru...");
+
     if (req.method !== 'POST') {
         res.setHeader('Allow', ['POST']);
         return res.status(405).end(`Method ${req.method} Not Allowed`);
@@ -9,8 +12,11 @@ export default async function handler(req, res) {
 
     try {
         const apiKey = process.env.GEMINI_API_KEY;
+        
+        // Pemeriksaan ini akan menyebabkan eror jika kunci tidak ada
         if (!apiKey) {
-            throw new Error("GEMINI_API_KEY tidak diatur di Environment Variables Vercel.");
+            console.error("Gagal: GEMINI_API_KEY tidak ditemukan di Environment Variables.");
+            throw new Error("Kunci API untuk layanan AI tidak diatur di server.");
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
